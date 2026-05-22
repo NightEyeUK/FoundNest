@@ -1,0 +1,1 @@
+export const category = ["Academic Material", "Clothing and Accessories", "Electronics", "Official Documents", "Personal Items", "Equipments" ]

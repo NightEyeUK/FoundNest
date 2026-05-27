@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "FoundNest",
+    "owner": "dev_xrab",
     "slug": "FoundNest",
     "version": "1.0.0",
     "orientation": "portrait",

@@ -219,6 +219,7 @@ export default function Report() {
           <TouchableOpacity style={styles.nextButton}
           onPress={()=> router.push('/reportNextPage')}
           >
+            
             <Text style={styles.buttonText}>Next</Text>
           </TouchableOpacity>
         </View>

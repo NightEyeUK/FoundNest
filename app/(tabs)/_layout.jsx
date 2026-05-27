@@ -20,7 +20,19 @@ export default function TabLayout() {
       <Tabs.Screen name="report" options={{ title: 'Report' }} />
       <Tabs.Screen name="find" options={{ title: 'Find' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-      <Tabs.Screen name="reportNextPage" options={{ title: 'Report' }} />
+      <Tabs.Screen
+        name="officeModal"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="reportNextPage"
+        options={{
+          title: 'Report',
+          href: null,
+        }}
+      />
 
       </Tabs>
     )

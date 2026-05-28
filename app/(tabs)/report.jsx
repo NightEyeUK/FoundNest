@@ -20,6 +20,7 @@ import * as FileSystem from 'expo-file-system/legacy'; // Added for Base64 conve
 import { DescribeItem } from '@/constants/geminiAI'
 import AppColors from '@/constants/AppColors';
 import { useRouter } from 'expo-router';
+import { getCategories } from '@/constants/category'; // Import the function to fetch categories
 
 export default function Report() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -29,9 +30,22 @@ export default function Report() {
   const [contents, setContents] = useState("");
   const [isLoading, setIsLoading] = useState(false); // New loading state
   const router = useRouter();
+  const [categoriesFromAPI, setCategoriesFromAPI] = useState([]); // Initialize with an empty array
 
+
+  // Fetch categories from the backend API
+  React.useEffect(() => {
+    const fetchCategories = async () => {
+      const categories = await getCategories();
+      setCategoriesFromAPI(categories);
+      console.log("Categories set in state:", categories); // Log the categories to verify they are set
+    };
+    fetchCategories();
+  }, []);
+getCategories();
   // AI Processing Function
   const analyzeImage = async (uri) => {
+     // Fetch categories from the backend API
     setIsLoading(true);
     try {
       // 1. Convert local URI to Base64

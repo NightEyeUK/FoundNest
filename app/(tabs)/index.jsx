@@ -1,15 +1,252 @@
-import { StyleSheet, Text, ScrollView, View, TextInput, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  ScrollView,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ImageBackground,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 
 import AppColors from '@/constants/AppColors';
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_HORIZONTAL_PADDING = 20;
+const CARD_HEIGHT = 220;
+const RECENT_FINDS_LIMIT = 5;
+
+function formatFoundDate(iso) {
+  const date = new Date(iso);
+  const datePart = date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).toLowerCase();
+  return `${datePart} | ${timePart}`;
+}
+
+function RecentFindsCarousel({ items, activeIndex, onIndexChange }) {
+  const handleScroll = useCallback(
+    (event) => {
+      const index = Math.round(
+        event.nativeEvent.contentOffset.x / SCREEN_WIDTH,
+      );
+      const clamped = Math.max(0, Math.min(index, items.length - 1));
+      if (clamped !== activeIndex) {
+        onIndexChange(clamped);
+      }
+    },
+    [activeIndex, items.length, onIndexChange],
+  );
+
+  if (items.length === 0) return null;
+
+  return (
+    <View style={carouselStyles.wrapper}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        onMomentumScrollEnd={handleScroll}
+        scrollEnabled={items.length > 1}
+        style={carouselStyles.scroll}
+        contentContainerStyle={carouselStyles.scrollContent}
+      >
+        {items.map((item) => (
+          <View
+            key={String(item.found_report_id ?? item.item_id)}
+            style={carouselStyles.slide}
+          >
+            <ImageBackground
+              source={{ uri: item.image_url }}
+              style={carouselStyles.card}
+              imageStyle={carouselStyles.cardImage}
+            >
+              <View style={carouselStyles.overlay}>
+                <Text style={carouselStyles.itemName}>{item.item_name}</Text>
+                <View style={carouselStyles.divider} />
+                <View style={carouselStyles.metaRow}>
+                  <Ionicons name="calendar-outline" size={16} color="#fff" />
+                  <Text style={carouselStyles.metaText}>
+                    {formatFoundDate(item.found_date)}
+                  </Text>
+                </View>
+                <View style={carouselStyles.metaRow}>
+                  <Ionicons name="location-outline" size={16} color="#fff" />
+                  <Text style={carouselStyles.metaText}>
+                    {item.location_found}
+                  </Text>
+                </View>
+              </View>
+            </ImageBackground>
+          </View>
+        ))}
+      </ScrollView>
+
+      {items.length > 1 && (
+        <>
+          <View style={carouselStyles.dots}>
+            {items.map((report, index) => (
+              <View
+                key={report.found_report_id ?? report.item_id ?? index}
+                style={[
+                  carouselStyles.dot,
+                  index === activeIndex && carouselStyles.dotActive,
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={carouselStyles.counter}>
+            {activeIndex + 1} / {items.length}
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const carouselStyles = StyleSheet.create({
+  wrapper: {
+    marginHorizontal: -CARD_HORIZONTAL_PADDING,
+  },
+  scroll: {
+    height: CARD_HEIGHT,
+  },
+  scrollContent: {
+    alignItems: 'center',
+  },
+  slide: {
+    width: SCREEN_WIDTH,
+    paddingHorizontal: CARD_HORIZONTAL_PADDING,
+    height: CARD_HEIGHT,
+  },
+  card: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  cardImage: {
+    borderRadius: 16,
+  },
+  overlay: {
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  itemName: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    marginBottom: 10,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  metaText: {
+    color: '#fff',
+    fontSize: 13,
+    flex: 1,
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: CARD_HORIZONTAL_PADDING,
+  },
+  dot: {
+    width: 28,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  dotActive: {
+    backgroundColor: '#FFF8F0',
+    width: 40,
+  },
+  counter: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+});
+
 export default function HomeScreen() {
-  
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('');
+  const [foundReports, setFoundReports] = useState([]);
+  const [loadingFinds, setLoadingFinds] = useState(true);
+  const [activeFindIndex, setActiveFindIndex] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRecentFinds() {
+      try {
+        const res = await fetch(
+          'https://foundnest-backend.onrender.com/api/found-reports',
+        );
+        const contentType = res.headers.get('content-type') ?? '';
+
+        if (!res.ok) {
+          throw new Error(`Found reports failed (${res.status})`);
+        }
+        if (!contentType.includes('application/json')) {
+          const body = await res.text();
+          throw new Error(
+            `Expected JSON but got: ${body.slice(0, 80)}`,
+          );
+        }
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        const sorted = [...(Array.isArray(data) ? data : [])]
+          .sort((a, b) => new Date(b.found_date) - new Date(a.found_date))
+          .slice(0, RECENT_FINDS_LIMIT);
+        setFoundReports(sorted);
+        setActiveFindIndex(0);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Recent finds:', err);
+          setFoundReports([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingFinds(false);
+        }
+      }
+    }
+
+    loadRecentFinds();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const studentData = {
     fullName:{
@@ -19,7 +256,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} nestedScrollEnabled>
       <View>
       <Text style={styles.title}>Hello, {studentData.fullName.firstName}!</Text>
       <Text style={styles.title}>Searching for something?</Text>
@@ -112,10 +349,30 @@ export default function HomeScreen() {
 
       </TouchableOpacity>
     </View>
-        
 
-        
-        
+      <View style={styles.recentFindsSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Finds</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push('/(tabs)/find')}
+          >
+            <Text style={styles.sectionLink}>Go to Found Items &gt;</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loadingFinds ? (
+          <ActivityIndicator color={AppColors.surface} style={styles.findsLoader} />
+        ) : foundReports.length === 0 ? (
+          <Text style={styles.emptyFindsText}>No found items yet.</Text>
+        ) : (
+          <RecentFindsCarousel
+            items={foundReports}
+            activeIndex={activeFindIndex}
+            onIndexChange={setActiveFindIndex}
+          />
+        )}
+      </View>
     </View>
     </ScrollView>
   );
@@ -210,5 +467,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
+  recentFindsSection: {
+    marginTop: 28,
+    paddingBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    color: AppColors.surface,
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  sectionLink: {
+    color: '#F5D76E',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  findsLoader: {
+    marginVertical: 40,
+  },
+  emptyFindsText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 15,
+    textAlign: 'center',
+    marginVertical: 24,
+  },
 });

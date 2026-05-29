@@ -1,43 +1,54 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { category } from "./category";
+import { API_BASE_URL } from '@/constants/api';
+import { parseApiError } from '@/utils/lostReport';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY
-});
-
-export async function DescribeItem({ base64Data, mimeType }) {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash", 
-      contents: [
-        {
-          text: `Analyze this lost item image. Fill out the schema fields based on your observations. 
-          For the category field, choose the best match strictly from this list: ${category.join(", ")}.Return only an object, Stop being chatty`,
-        },
-        {
-          inlineData: {
-            mimeType: mimeType || "image/jpeg",
-            data: base64Data,
-          },
-        },
-      ],
-      config: {
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            itemName: { type: Type.STRING, description: "Short title of the item found" },
-            detailedDescription: { type: Type.STRING, description: "Brand, model, colors, materials, unique features" },
-            contents: { type: Type.STRING, description: "If a bag or wallet, list notable contents inside" },
-            category: { type: Type.STRING, description: "The single best matching category category from the provided list" },
-          },
-          required: ["itemName", "detailedDescription", "category"],
-        },
-      },
-    });
-  
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Gemini Analysis Error:", error);
-    throw error;
+/**
+ * Sends the photo to your backend for Gemini analysis.
+ * The API key stays on the server — not in this app.
+ */
+export async function DescribeItem({
+  imageUri,
+  mimeType = 'image/jpeg',
+  categoryOptions = [],
+}) {
+  if (!imageUri) {
+    throw new Error('Image URI is required for analysis.');
   }
+
+  const fileName = imageUri.split('/').pop() || 'item-photo.jpg';
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  const resolvedMime =
+    mimeType ||
+    (extension === 'png'
+      ? 'image/png'
+      : extension === 'webp'
+        ? 'image/webp'
+        : 'image/jpeg');
+
+  const formData = new FormData();
+  formData.append('image', {
+    uri: imageUri,
+    name: fileName.includes('.') ? fileName : `${fileName}.jpg`,
+    type: resolvedMime,
+  });
+
+  if (categoryOptions.length > 0) {
+    formData.append('categoryOptions', categoryOptions.join(','));
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/gemini-item-listing/describe-item`,
+    { method: 'POST', body: formData },
+  );
+
+  if (!response.ok) {
+    const message = await parseApiError(response);
+    throw new Error(message);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error('AI service returned an unexpected response.');
+  }
+
+  return response.json();
 }

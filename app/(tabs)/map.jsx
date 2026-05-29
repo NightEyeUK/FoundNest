@@ -6,6 +6,18 @@ import * as Location from 'expo-location';
 import OfficeModal from './officeModal';
 import { bulsuColleges } from '@/constants/centerLocation';
 
+useEffect(() => {
+    fetch("http://foundnest-backend.onrender.com/api/colleges")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+     
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, []);
+
 const BULSU_CENTER = [120.8142, 14.8582];
 
 const highDetailHybridStyle = {

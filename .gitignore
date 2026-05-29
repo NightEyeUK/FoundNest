@@ -17,7 +17,15 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+# Secrets — never commit real keys
 .env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+**/.env.production
+**/secrets.json
+**/credentials.json
 
 # Metro
 .metro-health-check*

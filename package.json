@@ -6,11 +6,11 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "check-secrets": "node scripts/check-secrets.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
-    "@google/genai": "^2.5.0",
     "@maplibre/maplibre-react-native": "^11.2.1",
     "@react-native-picker/picker": "2.11.1",
     "@react-navigation/native": "^7.1.8",

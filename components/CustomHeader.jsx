@@ -13,9 +13,13 @@ export default function CustomHeader({title}) {
     router.push('/allNotification');
   }
 
-
   return (
+
+    
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
+      {
+        
+      }
       <View style={styles.bar}>
         <Image
             source={FoundNestLogo}

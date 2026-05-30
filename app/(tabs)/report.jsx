@@ -39,8 +39,8 @@ export default function Report() {
   const router = useRouter();
 
   const categoryDropdownData = categories.map((cat) => ({
-    label: cat.name,
-    value: String(cat.id),
+    label: cat.category_name,
+    value: String(cat.category_id),
   }));
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export default function Report() {
 
         const matched = matchCategoryFromAi(aiResult.category, categoryList);
         if (matched) {
-          setSelectedCategoryId(String(matched.id));
+          setSelectedCategoryId(String(matched.category_id));
         }
       }
     } catch (error) {

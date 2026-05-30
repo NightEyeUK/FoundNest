@@ -1,39 +1,54 @@
-import { Tabs } from 'expo-router';
+import { isLoggedIn } from '@/constants/StudentData';
+import { Redirect, Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
-import CustomTabBar from '@/components/CustomTabBar';
 import CustomHeader from '@/components/CustomHeader';
+import CustomTabBar from '@/components/CustomTabBar';
+import AppColors from '@/constants/AppColors';
+
 export default function TabLayout() {
-  
+  const [authChecked, setAuthChecked] = useState(false);
+  const [loggedIn, setLoggedIn]       = useState(false);
+
+  useEffect(() => {
+    isLoggedIn().then((result) => {
+      setLoggedIn(result);
+      setAuthChecked(true);
+    });
+  }, []);
+
+  // Still checking SecureStore — show a spinner
+  if (!authChecked) {
     return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.background }}>
+        <ActivityIndicator size="large" color={AppColors.surface} />
+      </View>
+    );
+  }
+
+  if (!loggedIn) {
+    return <Redirect href="/login" />;
+  }
+
+  return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: true,
         tabBarShowLabel: false,
-        header: ({options}) => ( 
-        <CustomHeader title = {options.title} />
+        header: ({ options }) => (
+          <CustomHeader title={options.title} />
         ),
-        
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="map" options={{ title: 'Map' }} />
-      <Tabs.Screen name="report" options={{ title: 'Report' }} />
-      <Tabs.Screen name="find" options={{ title: 'Find' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-      <Tabs.Screen
-        name="officeModal"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="reportNextPage"
-        options={{
-          title: 'Report',
-          href: null,
-        }}
-      />
-
-      </Tabs>
-    )
+      <Tabs.Screen name="index"          options={{ title: 'Home' }} />
+      <Tabs.Screen name="map"            options={{ title: 'Map' }} />
+      <Tabs.Screen name="report"         options={{ title: 'Report' }} />
+      <Tabs.Screen name="find"           options={{ title: 'Find' }} />
+      <Tabs.Screen name="profile"        options={{ title: 'Profile' }} />
+      <Tabs.Screen name="officeModal"    options={{ href: null }} />
+      <Tabs.Screen name="reportNextPage" options={{ title: 'Report', href: null }} />
+      <Tabs.Screen name="profileAccountDetails" options={{ title: 'Account Details', href: null }} />
+    </Tabs>
+  );
 }

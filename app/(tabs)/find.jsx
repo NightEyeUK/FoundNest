@@ -19,6 +19,7 @@ import { getCategories } from '@/constants/category';
 import { bulsuColleges } from '@/constants/centerLocation';
 import { sharedStudentSpaces } from '@/constants/SharedStudentSpaces';
 import { gates } from '@/constants/Gates';
+import { fetchWithAuth } from '@/constants/authApi';
 
 // --- FILTER CHIP COMPONENT ---
 const FilterChip = ({ label = "All Categories", onPress, isActive = false }) => {
@@ -62,9 +63,10 @@ const Find = () => {
   const [categories, setCategories] = useState([]);
   
   // -- FILTER STATES --
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]); 
   const [selectedLocations, setSelectedLocations] = useState([]);
   
+
   // Tracks which main dropdown is open
   const [activeMenu, setActiveMenu] = useState(null);  // null, 'categories', or 'locations'
   // Tracks which nested location folder-tab is open
@@ -104,7 +106,7 @@ const Find = () => {
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch('https://foundnest-backend.onrender.com/api/found-reports');
+        const response = await fetchWithAuth('https://foundnest-backend.onrender.com/api/found-reports');
         const json = await response.json();
         
         const formattedData = json.map(item => ({
@@ -174,6 +176,10 @@ const Find = () => {
   let locationDisplayText = "All Locations";
   if (selectedLocations.length === 1) locationDisplayText = selectedLocations[0];
   else if (selectedLocations.length > 1) locationDisplayText = `${selectedLocations.length} Selected`;
+
+  let claimedDisplayText = "Claimed";
+  if (selectedCategories.includes('Claimed')) claimedDisplayText = "Claimed";
+  
 
 
   // Helper Component for the Nested Folder Tabs
@@ -266,8 +272,15 @@ const Find = () => {
             <Icon name={activeMenu === 'locations' ? "chevron-up" : "chevron-down"} size={14} color={activeMenu === 'locations' ? "#A31D1D" : AppColors.background} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.filterChipTrigger}>
-            <Text style={styles.filterText}>Claimed</Text>
+          <TouchableOpacity 
+            style={[styles.filterChipTrigger, activeMenu === 'claimed' && styles.activeTriggerBg]}
+            onPress={() => {
+              setActiveMenu(activeMenu === 'claimed' ? null : 'claimed');
+            }}
+          >
+            <Text style={[styles.filterText, activeMenu === 'claimed' && styles.activeTriggerText]} numberOfLines={1}>
+              {claimedDisplayText}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -294,18 +307,19 @@ const Find = () => {
 
         {/* Dynamic Nested Location Folders */}
         {activeMenu === 'locations' && (
-          <View style={styles.dropdownWhiteCard}>
+          <View style={styles.dropdownWhiteCard}> // Container ng lahat
             <ScrollView style={styles.scrollableFilterContainer} showsVerticalScrollIndicator={false}>
               
-              {/* ROW 1: College & Shared Tabs */}
+              {/* ROW 1: College & Shared Tabs */} // Div na may dalawang tabs sa itaas para sa College at Shared spaces. Gates tab is alone sa row 2 sa ibaba
               <View style={styles.locTabsRow}>
                 <LocationTab group={locationGroups[0]} />
                 <LocationTab group={locationGroups[1]} />
               </View>
 
-              {/* ROW 1 CONTENT BOX */}
+              {/* ROW 1 CONTENT BOX */} // Isang box na nag-a-appear sa ilalim ng active tab (College or Shared) kapag pinindot. Nagdi-display ito ng corresponding 
+              locations bilang chips. Only one box can be open at a time, depende sa activeLocationGroup state. Gates tab has its own separate box sa row 2.
               {(activeLocationGroup === 'college' || activeLocationGroup === 'shared') && (
-                <View style={[styles.locationContentBox, activeLocationGroup === 'college' && styles.flatTopLeft]}>
+                <View style={[styles.locationContentBox, activeLocationGroup === 'college' && styles.flatTopLeft, activeLocationGroup === 'shared' && styles.flatTopRight,{flex: 1}]}>
                   <View style={styles.filterItemsContainer}>
                     {locationGroups.find(g => g.id === activeLocationGroup)?.items.map((loc, index) => (
                       <FilterChip 
@@ -447,20 +461,12 @@ const styles = StyleSheet.create({
     padding: 15,
     borderWidth: 1,
     borderColor: '#eee',
-    // Shadow for depth
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
   },
-  scrollableFilterContainer: {
-    maxHeight: 350, 
-  },
+  
   locTabsRow: {
     flexDirection: 'row',
     gap: 8,
-    zIndex: 2, // Keeps tab borders above the content box
+    zIndex: 2,
   },
   locTab: {
     flexDirection: 'row',
@@ -469,6 +475,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
+    marginBottom: 10,
+    
   },
   locTabActive: {
     backgroundColor: '#F3F3F3', // Matches content box
@@ -477,28 +485,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0, // Erase bottom border to merge with box
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    paddingBottom: 11, // Extra padding to overlap the box border
+    paddingBottom: 20,
+    marginBottom: 0, // Pulls the active tab down by 1px to hide the gap between it and the content box
   },
   locTabText: {
     fontSize: 13,
     color: '#333',
     fontWeight: '500',
+    maxWidth: 101,
+    width: 'auto',
   },
   locTabTextActive: {
     color: '#000',
     fontWeight: '700',
+    wrapContent: 'wrap',
+    overflow: 'scroll',
   },
   locationContentBox: {
-    backgroundColor: '#F3F3F3', // Matches active tab
+    backgroundColor: '#F3F3F3',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 5,
-    marginTop: -1, // Pulls the box UP by 1px to hide under the active tab
-    zIndex: 1, // Sits below the tabs
+    paddingTop: 10,
+    marginTop: -1,
+    zIndex: 1, 
   },
   flatTopLeft: {
-    borderTopLeftRadius: 0, // Makes the corner sharp when attached to the far-left tab
+    borderTopLeftRadius: 0, 
+  },
+  flatTopRight: {
+    borderTopRightRadius: 0, 
   },
 
   // --- GENERAL CHIP STYLES ---
@@ -515,7 +532,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',  
-    marginHorizontal: 4,
+    marginHorizontal: 5,
     marginVertical: 5,
     borderWidth: 1,
     borderColor: '#eee',

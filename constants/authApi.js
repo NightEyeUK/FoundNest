@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './api';
-import { clearSession, getRefreshToken, updateAccessToken } from './StudentData';
+import { clearSession, getRefreshToken, getToken, updateAccessToken } from './StudentData';
 
 export async function fetchWithAuth(url, options = {}) {
   let token = await getToken();

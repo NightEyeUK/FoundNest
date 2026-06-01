@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/constants/api';
 import AppColors from '@/constants/AppColors';
 import { saveSession } from '@/constants/StudentData';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -57,31 +58,24 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      // 🚧 TEMP: Mock login — remove when server is back
-      const MOCK_EMAIL = 'ben@ms.bulsu.edu.ph';
-      const MOCK_PASSWORD = 'password';
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password, rememberMe }),
+      });
 
-      if (email.trim() !== MOCK_EMAIL || password !== MOCK_PASSWORD) {
-        setLoginError('Invalid email or password. Please try again.');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setLoginError(data.message || 'Invalid email or password. Please try again.');
         return;
       }
 
-      const mockUser = {
-        user_id: 1,
-        email: MOCK_EMAIL,
-        user_role: 'student',
-        college_id: 1,
-        first_name: 'Test',
-        last_name: 'User',
-        student_number: '2021-00001',
-        profile_image_url: null,
-      };
-
-      await saveSession(`mock-token-${mockUser.user_id}`, mockUser, rememberMe);
+      await saveSession(data.accessToken, data.user, rememberMe, data.refreshToken);
       router.replace('/(tabs)');
 
     } catch (error) {
-      setLoginError('Something went wrong.');
+      setLoginError('Could not connect to server. Check your connection.');
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);
